@@ -379,6 +379,7 @@ async function addAlarmDB(t) {
   if (error) { console.error("addAlarm:", error); return false; }
   ALARMS.push(t);
   renderAlarms();
+  syncAlarmsToSW();
   return true;
 }
 
@@ -388,6 +389,7 @@ async function removeAlarm(t) {
   if (error) { console.error("removeAlarm:", error); return; }
   ALARMS = ALARMS.filter(a => a !== t);
   renderAlarms();
+  syncAlarmsToSW();
 }
 
 async function logEvent(type) {
@@ -554,6 +556,7 @@ document.getElementById("aPass").addEventListener("keydown", e => {
     showApp(session.user);
     await loadAll();
     requestNotificationPermission();
+    syncAlarmsToSW();
   } else {
     showLogin();
   }
@@ -579,11 +582,8 @@ sb.auth.onAuthStateChange(async (event, session) => {
 let swReg = null;
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
-    .then(reg => {
-      swReg = reg;
-      console.log("[PWA] Service worker registered");
-    })
-    .catch(err => console.error("[PWA] SW registration failed:", err));
+    .then(reg => { swReg = reg; console.log("[PWA] SW registered"); })
+    .catch(err => console.error("[PWA] SW failed:", err));
 }
 
 // ── PWA: Install prompt ───────────────────────────────────
@@ -593,44 +593,29 @@ window.addEventListener("beforeinstallprompt", e => {
   installPrompt = e;
   document.getElementById("installBanner").classList.add("show");
 });
-
 async function installApp() {
   if (!installPrompt) return;
   installPrompt.prompt();
   const { outcome } = await installPrompt.userChoice;
-  if (outcome === "accepted") {
+  if (outcome === "accepted")
     document.getElementById("installBanner").classList.remove("show");
-  }
   installPrompt = null;
 }
-
-// Hide banner if already installed
 window.addEventListener("appinstalled", () => {
   document.getElementById("installBanner").classList.remove("show");
 });
 
-// ── PWA: Request notification permission & sync alarms ────
+// ── PWA: Notifications ────────────────────────────────────
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
-  if (Notification.permission === "default") {
-    const result = await Notification.requestPermission();
-    console.log("[PWA] Notification permission:", result);
-  }
+  if (Notification.permission === "default")
+    await Notification.requestPermission();
 }
 
+// ── PWA: Sync alarms to service worker ───────────────────
 function syncAlarmsToSW() {
-  if (!navigator.serviceWorker.controller) return;
-  navigator.serviceWorker.controller.postMessage({
-    type: "SET_ALARMS",
-    alarms: ALARMS
-  });
-}
-
-// Call after alarms load or change
-const _origRenderAlarms = renderAlarms;
-function renderAlarms() {
-  _origRenderAlarms();
-  syncAlarmsToSW();
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({ type: "SET_ALARMS", alarms: ALARMS });
 }
 
 </script>
