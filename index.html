@@ -230,6 +230,23 @@ body{background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-se
   </div>
 </div>
 
+
+<!-- DEBUG PANEL -->
+<div id="debugPanel" style="position:fixed;bottom:50px;left:0;right:0;background:#111;
+  border-top:1px solid #333;padding:10px 14px;font-size:11px;font-family:monospace;
+  color:#56ccf2;z-index:8000;max-height:140px;overflow-y:auto;display:none">
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+    <strong>Debug Log</strong>
+    <button onclick="document.getElementById('debugPanel').style.display='none'"
+      style="background:none;border:none;color:#666;cursor:pointer;font-size:12px">hide</button>
+  </div>
+  <div id="debugLog"></div>
+</div>
+<button onclick="document.getElementById('debugPanel').style.display='block'"
+  style="position:fixed;bottom:50px;right:10px;background:#222;border:1px solid #444;
+  color:#56ccf2;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;z-index:7999">
+  debug
+</button>
 <!-- BOTTOM MENU -->
 <div class="bmenu" id="bmenu">
   <div class="mitem">&#127873; Rewards — Coming Soon</div>
@@ -340,7 +357,8 @@ function toast(msg) {
 
 // ── Data loading ──────────────────────────────────────────
 async function initApp(user) {
-  if (booting) return;  // prevent race conditions
+  dbg("initApp called for: " + user.email);
+  if (booting) { dbg("Already booting, skipping"); return; }
   booting = true;
   showApp(user);
   await Promise.all([loadStats(), loadAlarms()]);
@@ -458,9 +476,13 @@ async function doAuth() {
 }
 
 async function doSignOut() {
+  dbg("doSignOut called");
   appReady = false;
   booting  = false;
-  try { await sb.auth.signOut({ scope: "local" }); } catch(e) {}
+  try {
+    const { error } = await sb.auth.signOut({ scope: "local" });
+    dbg("signOut result: " + (error ? error.message : "OK"));
+  } catch(e) { dbg("signOut exception: " + e.message); }
   USER = null;
   showLogin();
 }
@@ -542,7 +564,8 @@ async function confirmSkip() {
 
 // ── Listeners ─────────────────────────────────────────────
 document.getElementById("addBtn").addEventListener("click", async () => {
-  if (!USER || !appReady) { toast("Please wait, loading..."); return; }
+  dbg("addBtn clicked, USER=" + (USER ? USER.email : "null") + " appReady=" + appReady);
+  if (!USER || !appReady) { toast("Please wait, loading..."); dbg("Blocked: USER or appReady missing"); return; }
   let h = parseInt(document.getElementById("selH").value);
   const m  = document.getElementById("selM").value;
   const ap = document.getElementById("selAP").value;
@@ -554,7 +577,7 @@ document.getElementById("addBtn").addEventListener("click", async () => {
   if (ok) toast("Alarm added \u2713");
 });
 
-document.getElementById("signoutBtn").addEventListener("click", doSignOut);
+document.getElementById("signoutBtn").addEventListener("click", () => { dbg("signout button clicked"); doSignOut(); });
 document.getElementById("aPass").addEventListener("keydown", e => {
   if (e.key === "Enter") doAuth();
 });
@@ -595,29 +618,40 @@ function syncAlarmsToSW() {
   navigator.serviceWorker.controller.postMessage({ type: "SET_ALARMS", alarms: ALARMS });
 }
 
+// ── Debug logger ─────────────────────────────────────────
+function dbg(msg) {
+  console.log("[Pinaki]", msg);
+  const el = document.getElementById("debugLog");
+  if (el) {
+    const line = document.createElement("div");
+    line.innerText = new Date().toLocaleTimeString() + " — " + msg;
+    el.insertBefore(line, el.firstChild);
+  }
+}
+
 // ── BOOT ──────────────────────────────────────────────────
-// Single entry point — check session once on load
 (async () => {
+  dbg("Boot started");
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session && session.user) {
-      await initApp(session.user);
+    const { data, error } = await sb.auth.getSession();
+    dbg("getSession result: " + (error ? "ERROR: " + error.message : (data.session ? "session found for " + data.session.user.email : "no session")));
+    if (data.session && data.session.user) {
+      await initApp(data.session.user);
     } else {
+      dbg("No session — showing login");
       showLogin();
     }
   } catch (err) {
-    console.error("Boot error:", err);
+    dbg("Boot exception: " + err.message);
     showLogin();
   }
 })();
 
-// Auth state change — ONLY handle actual sign-in/sign-out transitions
-// Do NOT handle INITIAL_SESSION here — boot above already does it
 sb.auth.onAuthStateChange((event, session) => {
+  dbg("Auth event: " + event + (session ? " (" + session.user.email + ")" : ""));
   if (event === "SIGNED_OUT") {
     showLogin();
   }
-  // Everything else ignored — boot and doAuth() handle all other cases
 });
 </script>
 </body>
