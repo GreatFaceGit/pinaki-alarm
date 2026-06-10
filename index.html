@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pinaki Alarm">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinaki Alarm</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;--surface:#161616;--surface2:#1f1f1f;
+  --border:#2a2a2a;--accent:#2f80ed;--accent2:#56ccf2;
+  --danger:#e05252;--muted:#666;--text:#f0f0f0;--subtext:#aaa;
+}
+body{background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:30px 16px 90px}
+
+/* login wall */
+#loginWall{display:none;position:fixed;inset:0;background:var(--bg);z-index:9000;
+  justify-content:center;align-items:center;padding:24px}
+#loginWall.show{display:flex}
+.lcard{background:var(--surface);border:1px solid var(--border);border-radius:22px;
+  padding:36px 28px;width:100%;max-width:380px;text-align:center}
+.ltitle{font-size:30px;font-weight:700;color:var(--accent2);margin-bottom:6px}
+.lsub{font-size:13px;color:var(--subtext);margin-bottom:28px}
+.tabs{display:flex;margin-bottom:18px}
+.tab{flex:1;padding:10px;border:1px solid var(--border);background:var(--surface2);
+  color:var(--subtext);cursor:pointer;font-size:14px;font-weight:600;transition:.2s}
+.tab:first-child{border-radius:10px 0 0 10px}
+.tab:last-child{border-radius:0 10px 10px 0}
+.tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.field{width:100%;background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+  margin-bottom:10px;display:block}
+.field:focus{outline:none;border-color:var(--accent)}
+.field::placeholder{color:var(--muted)}
+#authMsg{font-size:13px;margin-top:10px;min-height:18px;text-align:center}
+.ok{color:#5cb85c}.er{color:var(--danger)}
+
+/* app */
+#app{display:none;width:100%;flex-direction:column;align-items:center}
+.hdr{width:100%;max-width:400px;display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:24px}
+.htitle{font-size:20px;font-weight:700}
+.htitle span{color:var(--accent2)}
+#badge{font-size:12px;color:var(--subtext);background:var(--surface2);
+  border:1px solid var(--border);border-radius:20px;padding:4px 12px;
+  max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  padding:24px;width:100%;max-width:400px;margin-bottom:16px}
+.ctitle{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px}
+#clock{font-size:52px;font-weight:300;letter-spacing:-1px;line-height:1;margin-bottom:4px}
+#dateline{font-size:13px;color:var(--subtext)}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sbox{background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:12px 8px;text-align:center}
+.sval{font-size:22px;font-weight:700;color:var(--accent2)}
+.slbl{font-size:10px;color:var(--subtext);margin-top:2px;text-transform:uppercase;letter-spacing:.8px}
+.tpick{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.tpick select{flex:1;background:var(--surface2);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;padding:10px 8px;
+  font-size:15px;appearance:none;text-align:center;cursor:pointer}
+.tpick select:focus{outline:none;border-color:var(--accent)}
+.colon{font-size:20px;color:var(--muted);flex:none}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;
+  font-size:15px;font-weight:600;cursor:pointer;transition:.2s}
+.bp{background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;box-shadow:0 0 20px rgba(47,128,237,.3)}
+.bp:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(47,128,237,.5)}
+.bs{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.bd{background:var(--danger);color:#fff}
+.btn+.btn{margin-top:10px}
+#alarmList{display:flex;flex-direction:column;gap:8px}
+.arow{display:flex;justify-content:space-between;align-items:center;
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.atime{font-size:18px;font-weight:600}
+.adel{background:none;border:1px solid #3a3a3a;color:var(--muted);
+  border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12px;transition:.2s}
+.adel:hover{border-color:var(--danger);color:var(--danger)}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:12px 0}
+#signoutBtn{background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;transition:.2s}
+#signoutBtn:hover{border-color:var(--danger);color:var(--danger)}
+
+/* overlay */
+.ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);
+  justify-content:center;align-items:center;z-index:5000}
+.ovl.show{display:flex}
+.ocard{background:var(--surface);border:1px solid var(--border);border-radius:22px;
+  padding:34px 28px;width:320px;text-align:center}
+.otitle{font-size:28px;font-weight:700;color:var(--accent2);margin-bottom:6px}
+.osub{font-size:14px;color:var(--subtext);margin-bottom:22px}
+.cring{font-size:56px;font-weight:200;color:var(--accent2);margin:18px 0}
+
+/* bottom menu */
+#menuBtn{position:fixed;bottom:0;left:0;width:100%;height:46px;
+  background:var(--surface);border-top:1px solid var(--border);
+  display:flex;justify-content:center;align-items:center;
+  cursor:pointer;z-index:998;color:var(--subtext);font-size:20px;user-select:none}
+.bmenu{position:fixed;left:0;bottom:-220px;width:100%;background:var(--surface);
+  border-top:1px solid var(--border);transition:.3s;z-index:997}
+.bmenu.open{bottom:46px}
+.mitem{padding:16px 24px;border-bottom:1px solid var(--border);color:var(--subtext);font-size:14px}
+.mitem:last-child{border-bottom:none}
+
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;
+  display:inline-block;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* install banner */
+#installBanner{display:none;position:fixed;top:0;left:0;width:100%;
+  background:linear-gradient(135deg,#2f80ed,#56ccf2);color:#fff;
+  padding:12px 16px;z-index:9999;align-items:center;justify-content:space-between;
+  font-size:14px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+#installBanner.show{display:flex}
+#installBanner button{background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.5);
+  color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600}
+
+</style>
+</head>
+<body>
+
+<!-- PWA Install Banner -->
+<div id="installBanner">
+  <span>&#8659; Install Pinaki Alarm on your device</span>
+  <div style="display:flex;gap:8px">
+    <button onclick="installApp()">Install</button>
+    <button onclick="document.getElementById('installBanner').classList.remove('show')">&#10005;</button>
+  </div>
+</div>
+
+<!-- LOGIN WALL -->
+<div id="loginWall" class="show">
+  <div class="lcard">
+    <div class="ltitle">Pinaki Alarm</div>
+    <div class="lsub">Sign in to set alarms and earn Charity Points</div>
+    <div class="tabs">
+      <button class="tab on" id="tLogin"  onclick="setTab('login')">Log In</button>
+      <button class="tab"    id="tSignup" onclick="setTab('signup')">Sign Up</button>
+    </div>
+    <input class="field" type="email"    id="aEmail" placeholder="Email address" autocomplete="email">
+    <input class="field" type="password" id="aPass"  placeholder="Password"      autocomplete="current-password">
+    <button class="btn bp" id="aBtn" onclick="doAuth()">Log In</button>
+    <div id="authMsg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="hdr">
+    <div class="htitle">Pinaki<span> Alarm</span></div>
+    <div id="badge">-</div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Current Time</div>
+    <div id="clock">--:--:--</div>
+    <div id="dateline">-</div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Your Impact</div>
+    <div class="sgrid">
+      <div class="sbox"><div class="sval" id="sPts">0</div><div class="slbl">Charity Pts</div></div>
+      <div class="sbox"><div class="sval" id="sWatched">0</div><div class="slbl">Ads Watched</div></div>
+      <div class="sbox"><div class="sval" id="sSkipped">0</div><div class="slbl">Skipped</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Set Alarm</div>
+    <div class="tpick">
+      <select id="selH"></select>
+      <span class="colon">:</span>
+      <select id="selM"></select>
+      <select id="selAP"><option>AM</option><option>PM</option></select>
+    </div>
+    <button class="btn bp" id="addBtn">Add Alarm</button>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Alarms</div>
+    <div id="alarmList"><div class="empty">No alarms set</div></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle">Account</div>
+    <div style="text-align:center">
+      <p style="font-size:14px;color:var(--subtext);margin-bottom:14px">
+        Signed in as <strong id="userEmail" style="color:var(--text)"></strong>
+      </p>
+      <button id="signoutBtn">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALARM OVERLAY -->
+<div id="ovl" class="ovl">
+  <div class="ocard">
+    <div class="otitle">&#9200; ALARM</div>
+    <div class="osub" id="ovlTime"></div>
+
+    <div id="vPre">
+      <p style="font-size:14px;color:var(--subtext);margin-bottom:20px">
+        Watch a short ad to earn a Charity Point.
+      </p>
+      <button class="btn bp" onclick="startAd()">Watch &amp; Earn</button>
+      <button class="btn bs" onclick="doSnooze()">Snooze 5 Minutes</button>
+      <button class="btn bd" onclick="doSkip()">Skip (no point)</button>
+    </div>
+
+    <div id="vAd" style="display:none">
+      <h3 style="color:var(--subtext);font-weight:400;margin-bottom:8px">Charity Advertisement</h3>
+      <div class="cring" id="cdNum">10</div>
+      <p style="font-size:12px;color:var(--muted)">Stay on screen to earn your point</p>
+    </div>
+
+    <div id="vSkip" style="display:none">
+      <p style="font-size:15px;margin-bottom:20px">Skip? You won't earn a Charity Point.</p>
+      <button class="btn bd" onclick="confirmSkip()">Yes, skip it</button>
+      <button class="btn bs" onclick="cancelSkip()" style="margin-top:10px">Go back</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM MENU -->
+<div class="bmenu" id="bmenu">
+  <div class="mitem">&#127873; Rewards — Coming Soon</div>
+  <div class="mitem">&#127758; Choose Your Cause — Coming Soon</div>
+  <div class="mitem">&#9881; Settings — Coming Soon</div>
+  <div class="mitem">&#8505; About Pinaki</div>
+</div>
+<div id="menuBtn" onclick="document.getElementById('bmenu').classList.toggle('open')">&#9776;</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── Supabase ──────────────────────────────────────────────
+const SB_URL = "https://tuxcuqynvddreegsvnom.supabase.co";
+const SB_KEY = "sb_publishable_KLPN8s5ob-9xx-xWZMwf-A_V4aFhioL";
+const sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+// ── State ─────────────────────────────────────────────────
+let USER = null;
+let ALARMS = [];
+let PTS = 0, WATCHED = 0, SKIPPED = 0;
+let lastTriggered = "";
+let adTimer = null;
+let authTab = "login";
+let appReady = false;
+
+// ── Clock ─────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById("clock").innerText =
+    now.toLocaleTimeString("en-IN", { hour12: true });
+  document.getElementById("dateline").innerText =
+    now.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+
+  if (!appReady) return;
+  const hh = String(now.getHours()).padStart(2,"0");
+  const mm = String(now.getMinutes()).padStart(2,"0");
+  const t  = hh + ":" + mm;
+  if (ALARMS.includes(t) && t !== lastTriggered) {
+    lastTriggered = t;
+    openOverlay(t);
+  }
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ── UI helpers ────────────────────────────────────────────
+function showApp(user) {
+  USER = user;
+  appReady = false; // will be true after data loads
+  document.getElementById("loginWall").classList.remove("show");
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("badge").innerText     = user.email;
+  document.getElementById("userEmail").innerText = user.email;
+}
+
+function showLogin() {
+  appReady = false;
+  USER = null; ALARMS = []; PTS = 0; WATCHED = 0; SKIPPED = 0;
+  renderStats(); renderAlarms();
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginWall").classList.add("show");
+}
+
+function renderStats() {
+  document.getElementById("sPts").innerText     = PTS;
+  document.getElementById("sWatched").innerText = WATCHED;
+  document.getElementById("sSkipped").innerText = SKIPPED;
+}
+
+function renderAlarms() {
+  const el = document.getElementById("alarmList");
+  if (!ALARMS.length) { el.innerHTML = '<div class="empty">No alarms set</div>'; return; }
+  el.innerHTML = ALARMS.map(t => {
+    const [h, m] = t.split(":").map(Number);
+    const ap = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    const label = String(h12).padStart(2,"0") + ":" + String(m).padStart(2,"0") + " " + ap;
+    return '<div class="arow">' +
+      '<span class="atime">' + label + '</span>' +
+      '<button class="adel" onclick="removeAlarm(\'' + t + '\')">Remove</button>' +
+      '</div>';
+  }).join("");
+}
+
+function toast(msg) {
+  const d = document.createElement("div");
+  d.innerText = msg;
+  Object.assign(d.style, {
+    position:"fixed", bottom:"70px", left:"50%", transform:"translateX(-50%)",
+    background:"#2f80ed", color:"#fff", padding:"12px 24px", borderRadius:"12px",
+    fontSize:"14px", fontWeight:"600", boxShadow:"0 4px 20px rgba(0,0,0,.4)",
+    zIndex:"9999", opacity:"1", transition:"opacity .5s", whiteSpace:"nowrap"
+  });
+  document.body.appendChild(d);
+  setTimeout(() => { d.style.opacity = "0"; setTimeout(() => d.remove(), 500); }, 2500);
+}
+
+// ── Supabase data ─────────────────────────────────────────
+async function loadAll() {
+  await Promise.all([loadStats(), loadAlarms()]);
+  appReady = true;
+}
+
+async function loadStats() {
+  const { data, error } = await sb.from("user_stats")
+    .select("*").eq("user_id", USER.id).single();
+  if (error && error.code === "PGRST116") {
+    // row doesn't exist yet — create it
+    await sb.from("user_stats").insert({
+      user_id: USER.id, charity_points: 0, ads_watched: 0, ads_skipped: 0
+    });
+    PTS = 0; WATCHED = 0; SKIPPED = 0;
+  } else if (error) {
+    console.error("loadStats:", error);
+  } else {
+    PTS     = data.charity_points ?? 0;
+    WATCHED = data.ads_watched    ?? 0;
+    SKIPPED = data.ads_skipped    ?? 0;
+  }
+  renderStats();
+}
+
+async function saveStats() {
+  const { error } = await sb.from("user_stats").upsert({
+    user_id: USER.id,
+    charity_points: PTS, ads_watched: WATCHED, ads_skipped: SKIPPED,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "user_id" });
+  if (error) console.error("saveStats:", error);
+  renderStats();
+}
+
+async function loadAlarms() {
+  const { data, error } = await sb.from("alarms")
+    .select("alarm_time").eq("user_id", USER.id);
+  if (error) { console.error("loadAlarms:", error); return; }
+  ALARMS = (data || []).map(r => r.alarm_time);
+  renderAlarms();
+}
+
+async function addAlarmDB(t) {
+  const { error } = await sb.from("alarms").insert({
+    user_id: USER.id, alarm_time: t, created_at: new Date().toISOString()
+  });
+  if (error) { console.error("addAlarm:", error); return false; }
+  ALARMS.push(t);
+  renderAlarms();
+  return true;
+}
+
+async function removeAlarm(t) {
+  const { error } = await sb.from("alarms").delete()
+    .eq("user_id", USER.id).eq("alarm_time", t);
+  if (error) { console.error("removeAlarm:", error); return; }
+  ALARMS = ALARMS.filter(a => a !== t);
+  renderAlarms();
+}
+
+async function logEvent(type) {
+  await sb.from("ad_events").insert({
+    user_id: USER.id, event_type: type, created_at: new Date().toISOString()
+  });
+}
+
+// ── Auth ──────────────────────────────────────────────────
+function setTab(tab) {
+  authTab = tab;
+  document.getElementById("tLogin").classList.toggle("on",  tab === "login");
+  document.getElementById("tSignup").classList.toggle("on", tab === "signup");
+  document.getElementById("aBtn").innerText  = tab === "login" ? "Log In" : "Create Account";
+  document.getElementById("authMsg").innerText = "";
+}
+
+function setAuthMsg(msg, ok) {
+  const el = document.getElementById("authMsg");
+  el.innerText  = msg;
+  el.className  = ok ? "ok" : "er";
+}
+
+async function doAuth() {
+  const email = document.getElementById("aEmail").value.trim();
+  const pass  = document.getElementById("aPass").value;
+  const btn   = document.getElementById("aBtn");
+  if (!email || !pass) { setAuthMsg("Enter your email and password."); return; }
+
+  btn.innerHTML = '<span class="spin"></span>Please wait…';
+  btn.disabled  = true;
+
+  if (authTab === "login") {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      setAuthMsg(error.message);
+    }
+    // on success, onAuthStateChange fires SIGNED_IN and handles the rest
+  } else {
+    const { error } = await sb.auth.signUp({ email, password: pass });
+    if (error) { setAuthMsg(error.message); }
+    else { setAuthMsg("Account created! Check your email to confirm, then log in.", true); }
+  }
+
+  btn.innerHTML = authTab === "login" ? "Log In" : "Create Account";
+  btn.disabled  = false;
+}
+
+async function doSignOut() {
+  appReady = false;
+  try {
+    await sb.auth.signOut({ scope: "local" });
+  } catch(e) {
+    console.warn("signOut error (ignored):", e);
+  }
+  // Force clear regardless of signOut result
+  USER = null;
+  showLogin();
+}
+
+// ── Alarm overlay ─────────────────────────────────────────
+function openOverlay(t) {
+  const [h, m] = t.split(":").map(Number);
+  const ap  = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  document.getElementById("ovlTime").innerText =
+    "Set for " + String(h12).padStart(2,"0") + ":" + String(m).padStart(2,"0") + " " + ap;
+  showPanel("vPre");
+  document.getElementById("ovl").classList.add("show");
+}
+
+function showPanel(id) {
+  ["vPre","vAd","vSkip"].forEach(p =>
+    document.getElementById(p).style.display = p === id ? "block" : "none"
+  );
+}
+
+function startAd() {
+  showPanel("vAd");
+  let s = 10;
+  document.getElementById("cdNum").innerText = s;
+  clearInterval(adTimer);
+  adTimer = setInterval(async () => {
+    s--;
+    document.getElementById("cdNum").innerText = s;
+    if (s <= 0) {
+      clearInterval(adTimer);
+      PTS++; WATCHED++;
+      await saveStats();
+      await logEvent("watched");
+      document.getElementById("ovl").classList.remove("show");
+      toast("🎉 +1 Charity Point earned!");
+    }
+  }, 1000);
+}
+
+function doSnooze() {
+  clearInterval(adTimer);
+  document.getElementById("ovl").classList.remove("show");
+  setTimeout(() => {
+    showPanel("vPre");
+    document.getElementById("ovl").classList.add("show");
+  }, 5 * 60 * 1000);
+}
+
+function doSkip()      { showPanel("vSkip"); }
+function cancelSkip()  { showPanel("vPre"); }
+async function confirmSkip() {
+  clearInterval(adTimer);
+  SKIPPED++;
+  await saveStats();
+  await logEvent("skipped");
+  document.getElementById("ovl").classList.remove("show");
+}
+
+// ── Dropdowns ─────────────────────────────────────────────
+(function populateDropdowns() {
+  const h = document.getElementById("selH");
+  const m = document.getElementById("selM");
+  for (let i = 1; i <= 12; i++) {
+    const o = document.createElement("option");
+    o.value = o.text = String(i).padStart(2,"0");
+    h.appendChild(o);
+  }
+  for (let i = 0; i < 60; i++) {
+    const o = document.createElement("option");
+    o.value = o.text = String(i).padStart(2,"0");
+    m.appendChild(o);
+  }
+  const now = new Date();
+  let hr = now.getHours();
+  const mn = now.getMinutes();
+  const ap = hr >= 12 ? "PM" : "AM";
+  if (hr > 12) hr -= 12;
+  if (hr === 0) hr = 12;
+  h.value = String(hr).padStart(2,"0");
+  m.value = String(mn).padStart(2,"0");
+  document.getElementById("selAP").value = ap;
+})();
+
+// ── Button listeners ──────────────────────────────────────
+document.getElementById("addBtn").addEventListener("click", async () => {
+  if (!USER) { toast("Please sign in first."); return; }
+  let h = parseInt(document.getElementById("selH").value);
+  const m  = document.getElementById("selM").value;
+  const ap = document.getElementById("selAP").value;
+  if (ap === "PM" && h !== 12) h += 12;
+  if (ap === "AM" && h === 12) h  = 0;
+  const t = String(h).padStart(2,"0") + ":" + m;
+  if (ALARMS.includes(t)) { toast("Alarm already set for this time."); return; }
+  const ok = await addAlarmDB(t);
+  if (ok) toast("Alarm added ✓");
+});
+
+document.getElementById("signoutBtn").addEventListener("click", doSignOut);
+document.getElementById("aPass").addEventListener("keydown", e => {
+  if (e.key === "Enter") doAuth();
+});
+
+// ── Boot: explicit session check on every page load ─────
+(async () => {
+  const { data: { session }, error } = await sb.auth.getSession();
+  if (session && session.user) {
+    showApp(session.user);
+    await loadAll();
+    requestNotificationPermission();
+  } else {
+    showLogin();
+  }
+})();
+
+// ── Auth state listener: only handles transitions ────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_IN") {
+    // Only act if we are currently on the login wall (i.e. not already loaded)
+    const appVisible = document.getElementById("app").style.display === "flex";
+    if (!appVisible && session && session.user) {
+      showApp(session.user);
+      await loadAll();
+    }
+  } else if (event === "SIGNED_OUT") {
+    showLogin();
+  }
+  // INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED — all ignored here
+  // because getSession() above already handles the initial load
+});
+
+// ── PWA: Service Worker registration ─────────────────────
+let swReg = null;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js")
+    .then(reg => {
+      swReg = reg;
+      console.log("[PWA] Service worker registered");
+    })
+    .catch(err => console.error("[PWA] SW registration failed:", err));
+}
+
+// ── PWA: Install prompt ───────────────────────────────────
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installPrompt = e;
+  document.getElementById("installBanner").classList.add("show");
+});
+
+async function installApp() {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  const { outcome } = await installPrompt.userChoice;
+  if (outcome === "accepted") {
+    document.getElementById("installBanner").classList.remove("show");
+  }
+  installPrompt = null;
+}
+
+// Hide banner if already installed
+window.addEventListener("appinstalled", () => {
+  document.getElementById("installBanner").classList.remove("show");
+});
+
+// ── PWA: Request notification permission & sync alarms ────
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    const result = await Notification.requestPermission();
+    console.log("[PWA] Notification permission:", result);
+  }
+}
+
+function syncAlarmsToSW() {
+  if (!navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({
+    type: "SET_ALARMS",
+    alarms: ALARMS
+  });
+}
+
+// Call after alarms load or change
+const _origRenderAlarms = renderAlarms;
+function renderAlarms() {
+  _origRenderAlarms();
+  syncAlarmsToSW();
+}
+
+</script>
+</body>
+</html>
