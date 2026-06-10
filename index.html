@@ -245,17 +245,23 @@ body{background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-se
 const SB_URL = "https://tuxcuqynvddreegsvnom.supabase.co";
 const SB_KEY = "sb_publishable_KLPN8s5ob-9xx-xWZMwf-A_V4aFhioL";
 const sb = window.supabase.createClient(SB_URL, SB_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
+  auth: {
+    persistSession:   true,
+    autoRefreshToken: true,
+    storageKey:       "pinaki-auth",
+    storage:          window.localStorage
+  }
 });
 
 // ── State ─────────────────────────────────────────────────
-let USER = null;
-let ALARMS = [];
+let USER      = null;
+let ALARMS    = [];
 let PTS = 0, WATCHED = 0, SKIPPED = 0;
 let lastTriggered = "";
-let adTimer = null;
-let authTab = "login";
-let appReady = false;
+let adTimer   = null;
+let authTab   = "login";
+let appReady  = false;
+let booting   = false; // prevent double-init
 
 // ── Clock ─────────────────────────────────────────────────
 function tickClock() {
@@ -264,8 +270,7 @@ function tickClock() {
     now.toLocaleTimeString("en-IN", { hour12: true });
   document.getElementById("dateline").innerText =
     now.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
-
-  if (!appReady) return;
+  if (!appReady || !USER) return;
   const hh = String(now.getHours()).padStart(2,"0");
   const mm = String(now.getMinutes()).padStart(2,"0");
   const t  = hh + ":" + mm;
@@ -277,10 +282,9 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
-// ── UI helpers ────────────────────────────────────────────
+// ── UI ────────────────────────────────────────────────────
 function showApp(user) {
   USER = user;
-  appReady = false; // will be true after data loads
   document.getElementById("loginWall").classList.remove("show");
   document.getElementById("app").style.display = "flex";
   document.getElementById("badge").innerText     = user.email;
@@ -288,9 +292,13 @@ function showApp(user) {
 }
 
 function showLogin() {
-  appReady = false;
-  USER = null; ALARMS = []; PTS = 0; WATCHED = 0; SKIPPED = 0;
-  renderStats(); renderAlarms();
+  appReady  = false;
+  booting   = false;
+  USER      = null;
+  ALARMS    = [];
+  PTS = 0; WATCHED = 0; SKIPPED = 0;
+  renderStats();
+  renderAlarms();
   document.getElementById("app").style.display = "none";
   document.getElementById("loginWall").classList.add("show");
 }
@@ -303,16 +311,17 @@ function renderStats() {
 
 function renderAlarms() {
   const el = document.getElementById("alarmList");
-  if (!ALARMS.length) { el.innerHTML = '<div class="empty">No alarms set</div>'; return; }
+  if (!ALARMS.length) {
+    el.innerHTML = '<div class="empty">No alarms set</div>';
+    return;
+  }
   el.innerHTML = ALARMS.map(t => {
     const [h, m] = t.split(":").map(Number);
-    const ap = h >= 12 ? "PM" : "AM";
+    const ap  = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
-    const label = String(h12).padStart(2,"0") + ":" + String(m).padStart(2,"0") + " " + ap;
-    return '<div class="arow">' +
-      '<span class="atime">' + label + '</span>' +
-      '<button class="adel" onclick="removeAlarm(\'' + t + '\')">Remove</button>' +
-      '</div>';
+    const lbl = String(h12).padStart(2,"0") + ":" + String(m).padStart(2,"0") + " " + ap;
+    return '<div class="arow"><span class="atime">' + lbl +
+      '</span><button class="adel" onclick="removeAlarm(\'' + t + '\')">Remove</button></div>';
   }).join("");
 }
 
@@ -329,17 +338,22 @@ function toast(msg) {
   setTimeout(() => { d.style.opacity = "0"; setTimeout(() => d.remove(), 500); }, 2500);
 }
 
-// ── Supabase data ─────────────────────────────────────────
-async function loadAll() {
+// ── Data loading ──────────────────────────────────────────
+async function initApp(user) {
+  if (booting) return;  // prevent race conditions
+  booting = true;
+  showApp(user);
   await Promise.all([loadStats(), loadAlarms()]);
   appReady = true;
+  booting  = false;
+  syncAlarmsToSW();
+  requestNotificationPermission();
 }
 
 async function loadStats() {
   const { data, error } = await sb.from("user_stats")
     .select("*").eq("user_id", USER.id).single();
   if (error && error.code === "PGRST116") {
-    // row doesn't exist yet — create it
     await sb.from("user_stats").insert({
       user_id: USER.id, charity_points: 0, ads_watched: 0, ads_skipped: 0
     });
@@ -355,6 +369,7 @@ async function loadStats() {
 }
 
 async function saveStats() {
+  if (!USER) return;
   const { error } = await sb.from("user_stats").upsert({
     user_id: USER.id,
     charity_points: PTS, ads_watched: WATCHED, ads_skipped: SKIPPED,
@@ -373,6 +388,7 @@ async function loadAlarms() {
 }
 
 async function addAlarmDB(t) {
+  if (!USER) return false;
   const { error } = await sb.from("alarms").insert({
     user_id: USER.id, alarm_time: t, created_at: new Date().toISOString()
   });
@@ -384,6 +400,7 @@ async function addAlarmDB(t) {
 }
 
 async function removeAlarm(t) {
+  if (!USER) return;
   const { error } = await sb.from("alarms").delete()
     .eq("user_id", USER.id).eq("alarm_time", t);
   if (error) { console.error("removeAlarm:", error); return; }
@@ -393,6 +410,7 @@ async function removeAlarm(t) {
 }
 
 async function logEvent(type) {
+  if (!USER) return;
   await sb.from("ad_events").insert({
     user_id: USER.id, event_type: type, created_at: new Date().toISOString()
   });
@@ -403,14 +421,14 @@ function setTab(tab) {
   authTab = tab;
   document.getElementById("tLogin").classList.toggle("on",  tab === "login");
   document.getElementById("tSignup").classList.toggle("on", tab === "signup");
-  document.getElementById("aBtn").innerText  = tab === "login" ? "Log In" : "Create Account";
+  document.getElementById("aBtn").innerText    = tab === "login" ? "Log In" : "Create Account";
   document.getElementById("authMsg").innerText = "";
 }
 
 function setAuthMsg(msg, ok) {
   const el = document.getElementById("authMsg");
-  el.innerText  = msg;
-  el.className  = ok ? "ok" : "er";
+  el.innerText = msg;
+  el.className = ok ? "ok" : "er";
 }
 
 async function doAuth() {
@@ -418,7 +436,6 @@ async function doAuth() {
   const pass  = document.getElementById("aPass").value;
   const btn   = document.getElementById("aBtn");
   if (!email || !pass) { setAuthMsg("Enter your email and password."); return; }
-
   btn.innerHTML = '<span class="spin"></span>Please wait…';
   btn.disabled  = true;
 
@@ -426,12 +443,14 @@ async function doAuth() {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) {
       setAuthMsg(error.message);
+    } else if (data.user) {
+      // Explicitly init app on successful login
+      await initApp(data.user);
     }
-    // on success, onAuthStateChange fires SIGNED_IN and handles the rest
   } else {
     const { error } = await sb.auth.signUp({ email, password: pass });
-    if (error) { setAuthMsg(error.message); }
-    else { setAuthMsg("Account created! Check your email to confirm, then log in.", true); }
+    if (error) setAuthMsg(error.message);
+    else setAuthMsg("Account created! Check your email to confirm, then log in.", true);
   }
 
   btn.innerHTML = authTab === "login" ? "Log In" : "Create Account";
@@ -440,12 +459,8 @@ async function doAuth() {
 
 async function doSignOut() {
   appReady = false;
-  try {
-    await sb.auth.signOut({ scope: "local" });
-  } catch(e) {
-    console.warn("signOut error (ignored):", e);
-  }
-  // Force clear regardless of signOut result
+  booting  = false;
+  try { await sb.auth.signOut({ scope: "local" }); } catch(e) {}
   USER = null;
   showLogin();
 }
@@ -481,7 +496,7 @@ function startAd() {
       await saveStats();
       await logEvent("watched");
       document.getElementById("ovl").classList.remove("show");
-      toast("🎉 +1 Charity Point earned!");
+      toast("\uD83C\uDF89 +1 Charity Point earned!");
     }
   }, 1000);
 }
@@ -489,14 +504,11 @@ function startAd() {
 function doSnooze() {
   clearInterval(adTimer);
   document.getElementById("ovl").classList.remove("show");
-  setTimeout(() => {
-    showPanel("vPre");
-    document.getElementById("ovl").classList.add("show");
-  }, 5 * 60 * 1000);
+  setTimeout(() => { showPanel("vPre"); document.getElementById("ovl").classList.add("show"); }, 300000);
 }
 
-function doSkip()      { showPanel("vSkip"); }
-function cancelSkip()  { showPanel("vPre"); }
+function doSkip()     { showPanel("vSkip"); }
+function cancelSkip() { showPanel("vPre"); }
 async function confirmSkip() {
   clearInterval(adTimer);
   SKIPPED++;
@@ -506,18 +518,16 @@ async function confirmSkip() {
 }
 
 // ── Dropdowns ─────────────────────────────────────────────
-(function populateDropdowns() {
+(function() {
   const h = document.getElementById("selH");
   const m = document.getElementById("selM");
   for (let i = 1; i <= 12; i++) {
     const o = document.createElement("option");
-    o.value = o.text = String(i).padStart(2,"0");
-    h.appendChild(o);
+    o.value = o.text = String(i).padStart(2,"0"); h.appendChild(o);
   }
   for (let i = 0; i < 60; i++) {
     const o = document.createElement("option");
-    o.value = o.text = String(i).padStart(2,"0");
-    m.appendChild(o);
+    o.value = o.text = String(i).padStart(2,"0"); m.appendChild(o);
   }
   const now = new Date();
   let hr = now.getHours();
@@ -530,9 +540,9 @@ async function confirmSkip() {
   document.getElementById("selAP").value = ap;
 })();
 
-// ── Button listeners ──────────────────────────────────────
+// ── Listeners ─────────────────────────────────────────────
 document.getElementById("addBtn").addEventListener("click", async () => {
-  if (!USER) { toast("Please sign in first."); return; }
+  if (!USER || !appReady) { toast("Please wait, loading..."); return; }
   let h = parseInt(document.getElementById("selH").value);
   const m  = document.getElementById("selM").value;
   const ap = document.getElementById("selAP").value;
@@ -541,7 +551,7 @@ document.getElementById("addBtn").addEventListener("click", async () => {
   const t = String(h).padStart(2,"0") + ":" + m;
   if (ALARMS.includes(t)) { toast("Alarm already set for this time."); return; }
   const ok = await addAlarmDB(t);
-  if (ok) toast("Alarm added ✓");
+  if (ok) toast("Alarm added \u2713");
 });
 
 document.getElementById("signoutBtn").addEventListener("click", doSignOut);
@@ -549,44 +559,13 @@ document.getElementById("aPass").addEventListener("keydown", e => {
   if (e.key === "Enter") doAuth();
 });
 
-// ── Boot: explicit session check on every page load ─────
-(async () => {
-  const { data: { session }, error } = await sb.auth.getSession();
-  if (session && session.user) {
-    showApp(session.user);
-    await loadAll();
-    requestNotificationPermission();
-    syncAlarmsToSW();
-  } else {
-    showLogin();
-  }
-})();
-
-// ── Auth state listener: only handles transitions ────────
-sb.auth.onAuthStateChange(async (event, session) => {
-  if (event === "SIGNED_IN") {
-    // Only act if we are currently on the login wall (i.e. not already loaded)
-    const appVisible = document.getElementById("app").style.display === "flex";
-    if (!appVisible && session && session.user) {
-      showApp(session.user);
-      await loadAll();
-    }
-  } else if (event === "SIGNED_OUT") {
-    showLogin();
-  }
-  // INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED — all ignored here
-  // because getSession() above already handles the initial load
-});
-
-// ── PWA: Service Worker registration ─────────────────────
-let swReg = null;
+// ── PWA: Service Worker ───────────────────────────────────
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
-    .then(reg => { swReg = reg; console.log("[PWA] SW registered"); })
+    .then(reg => console.log("[PWA] SW registered"))
     .catch(err => console.error("[PWA] SW failed:", err));
 }
 
-// ── PWA: Install prompt ───────────────────────────────────
 let installPrompt = null;
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
@@ -601,23 +580,45 @@ async function installApp() {
     document.getElementById("installBanner").classList.remove("show");
   installPrompt = null;
 }
-window.addEventListener("appinstalled", () => {
-  document.getElementById("installBanner").classList.remove("show");
-});
+window.addEventListener("appinstalled", () =>
+  document.getElementById("installBanner").classList.remove("show")
+);
 
-// ── PWA: Notifications ────────────────────────────────────
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   if (Notification.permission === "default")
     await Notification.requestPermission();
 }
 
-// ── PWA: Sync alarms to service worker ───────────────────
 function syncAlarmsToSW() {
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
   navigator.serviceWorker.controller.postMessage({ type: "SET_ALARMS", alarms: ALARMS });
 }
 
+// ── BOOT ──────────────────────────────────────────────────
+// Single entry point — check session once on load
+(async () => {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      await initApp(session.user);
+    } else {
+      showLogin();
+    }
+  } catch (err) {
+    console.error("Boot error:", err);
+    showLogin();
+  }
+})();
+
+// Auth state change — ONLY handle actual sign-in/sign-out transitions
+// Do NOT handle INITIAL_SESSION here — boot above already does it
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT") {
+    showLogin();
+  }
+  // Everything else ignored — boot and doAuth() handle all other cases
+});
 </script>
 </body>
 </html>
