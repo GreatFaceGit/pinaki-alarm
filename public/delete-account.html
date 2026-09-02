@@ -56,7 +56,7 @@
   const SUPABASE_URL = 'https://tuxcuqynvddreegsvnom.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGN1cXludmRkcmVlZ3N2bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDAwMDMsImV4cCI6MjA5NjU3NjAwM30.M5v2nK7k1LGTjDAmOHCGgdEZtPzPrGSmMdZjBbhRL_0';
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGN1cXludmRkcmVlZ3N2bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDAwMDMsImV4cCI6MjA5NjU3NjAwM30.M5v2nK7k1LGTjDAmOHCGgdEZtPzPrGSmMdZjBbhRL_0);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGN1cXludmRkcmVlZ3N2bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDAwMDMsImV4cCI6MjA5NjU3NjAwM30.M5v2nK7k1LGTjDAmOHCGgdEZtPzPrGSmMdZjBbhRL_0);
 
   const step1 = document.getElementById('step1');
   const step2 = document.getElementById('step2');
@@ -78,7 +78,7 @@
     loginBtn.textContent = 'Signing in…';
     loginMsg.textContent = '';
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
     loginBtn.disabled = false;
     loginBtn.textContent = 'Sign in';
@@ -102,7 +102,7 @@
     deleteBtn.textContent = 'Deleting…';
     deleteMsg.textContent = '';
 
-    const { error } = await supabase.rpc('delete_account');
+    const { error } = await supabaseClient.rpc('delete_account');
 
     if (error) {
       deleteBtn.disabled = false;
@@ -112,7 +112,7 @@
       return;
     }
 
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     deleteMsg.textContent = 'Your account has been deleted.';
     deleteMsg.className = 'msg ok';
     deleteBtn.classList.add('hidden');
