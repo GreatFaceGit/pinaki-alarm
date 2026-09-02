@@ -56,8 +56,8 @@
   const SUPABASE_URL = 'https://tuxcuqynvddreegsvnom.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGN1cXludmRkcmVlZ3N2bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDAwMDMsImV4cCI6MjA5NjU3NjAwM30.M5v2nK7k1LGTjDAmOHCGgdEZtPzPrGSmMdZjBbhRL_0';
 
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGN1cXludmRkcmVlZ3N2bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMDAwMDMsImV4cCI6MjA5NjU3NjAwM30.M5v2nK7k1LGTjDAmOHCGgdEZtPzPrGSmMdZjBbhRL_0);
-
+ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
   const step1 = document.getElementById('step1');
   const step2 = document.getElementById('step2');
   const loginBtn = document.getElementById('loginBtn');
