@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join a Video Ludo game</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #1F1F45; color: #fff; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+  .card { max-width: 380px; width: 100%; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { color: #C9C9E8; font-size: 14px; line-height: 1.5; }
+  .code { font-size: 44px; font-weight: 800; letter-spacing: 8px; background: #2E2E62; border-radius: 16px; padding: 16px 8px; margin: 18px 0; }
+  a.btn, button { display: block; width: 100%; box-sizing: border-box; background: #43A047; color: #fff; border: 0; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; text-decoration: none; margin-top: 12px; cursor: pointer; }
+  a.alt, button.alt { background: transparent; border: 2px solid #5C6BC0; color: #C9C9E8; }
+  .small { font-size: 12px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎲 You're invited to play Ludo</h1>
+  <p>Open the game and you'll land on the join screen with this code filled in.</p>
+  <div class="code" id="code">······</div>
+  <a class="btn" id="open" href="#">Open in Video Ludo</a>
+  <a class="btn alt" id="store" href="https://play.google.com/store/apps/details?id=com.videoludo.game">Get the app</a>
+  <button class="alt" id="copy">Copy the code</button>
+  <p class="small" id="note"></p>
+</div>
+<script>
+  // The code comes from the link: join.html?code=ABC123
+  var code = (new URLSearchParams(location.search).get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  document.getElementById('code').textContent = code || 'NO CODE';
+  var store = 'https://play.google.com/store/apps/details?id=com.videoludo.game';
+  // Chrome on Android understands this address: it opens the app if it is
+  // installed and otherwise goes to the store page.
+  var intent = 'intent://join/' + code + '#Intent;scheme=videoludo;package=com.videoludo.game;S.browser_fallback_url=' + encodeURIComponent(store) + ';end';
+  var isAndroid = /Android/i.test(navigator.userAgent);
+  var open = document.getElementById('open');
+  open.href = isAndroid ? intent : store;
+  if (!code) { open.style.display = 'none'; document.getElementById('note').textContent = 'This link has no game code. Ask your friend to share it again.'; }
+  else if (!isAndroid) { document.getElementById('note').textContent = 'Video Ludo is for Android phones. Open this link on your phone.'; }
+  else { setTimeout(function () { location.href = intent; }, 600); }
+  document.getElementById('copy').onclick = function () {
+    if (navigator.clipboard) navigator.clipboard.writeText(code); this.textContent = 'Copied ✓';
+  };
+</script>
+</body>
+</html>
