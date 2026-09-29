@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Video Ludo — moderation</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #F4F4F8; color: #222; margin: 0; padding: 16px; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 20px; } .muted { color: #777; font-size: 13px; }
+  .bar { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  button { border: 0; border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; background: #5C6BC0; color: #fff; }
+  button.tab { background: #E0E0EC; color: #333; } button.tab.on { background: #5C6BC0; color: #fff; }
+  button.warn { background: #F39C12; } button.ban { background: #E53935; } button.ok { background: #43A047; } button.grey { background: #888; }
+  .card { background: #fff; border-radius: 12px; padding: 14px; margin: 12px 0; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; } .pics img { height: 150px; border-radius: 8px; margin: 4px 6px 0 0; background: #EEE; }
+  .tag { display: inline-block; background: #FFEBEE; color: #C62828; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+  textarea { width: 100%; box-sizing: border-box; border-radius: 8px; border: 1px solid #CCC; padding: 8px; margin: 8px 0; }
+  pre { background: #272822; color: #A6E22E; padding: 10px; border-radius: 8px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡️ Video Ludo moderation</h1>
+  <div id="app" class="muted">Loading…</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ── fill these two in (both are safe to have in a public page) ──
+  var SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
+  var SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var app = document.getElementById('app'); var status = 'open';
+  var esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
+
+  async function start() {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) {
+      app.innerHTML = '<p>Sign in with the Google account that is a moderator.</p><button id="in">Sign in with Google</button>';
+      document.getElementById('in').onclick = function () { sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.split('#')[0] } }); };
+      return;
+    }
+    load(s.user);
+  }
+
+  async function load(user) {
+    var r = await sb.rpc('ludo_admin_reports', { p_status: status });
+    if (r.error) { app.textContent = 'Error: ' + r.error.message; return; }
+    if (!r.data.ok) {
+      app.innerHTML = '<div class="card"><b>This account is not a moderator.</b><p>Signed in as ' + esc(user.email) + '. To make it one, run this once in the Supabase SQL Editor:</p><pre>insert into ludo_admins (user_id) values (\'' + esc(user.id) + '\');</pre><button id="out" class="grey">Sign out</button></div>';
+      document.getElementById('out').onclick = async function () { await sb.auth.signOut(); location.reload(); };
+      return;
+    }
+    var tabs = ['open', 'actioned', 'dismissed'].map(function (t) { return '<button class="tab ' + (t === status ? 'on' : '') + '" data-t="' + t + '">' + t + '</button>'; }).join('');
+    var html = '<div class="bar">' + tabs + '<button class="grey" id="out">Sign out</button></div>';
+    if (!r.data.reports.length) html += '<p class="muted">No ' + status + ' reports.</p>';
+    for (var rep of r.data.reports) html += await card(rep);
+    app.innerHTML = html;
+    app.querySelectorAll('.tab').forEach(function (b) { b.onclick = function () { status = b.dataset.t; load(user); }; });
+    document.getElementById('out').onclick = async function () { await sb.auth.signOut(); location.reload(); };
+    app.querySelectorAll('[data-act]').forEach(function (b) {
+      b.onclick = async function () {
+        var note = document.getElementById('n-' + b.dataset.id).value || null;
+        if (b.dataset.act === 'ban' && !confirm('Ban this player from multiplayer, voice and video?')) return;
+        var x = await sb.rpc('ludo_admin_resolve', { p_report_id: b.dataset.id, p_action: b.dataset.act, p_note: note });
+        if (x.error || !x.data.ok) alert('Failed: ' + (x.error ? x.error.message : x.data.reason)); else load(user);
+      };
+    });
+  }
+
+  async function signed(bucket, path) { if (!path) return null; var r = await sb.storage.from(bucket).createSignedUrl(path, 600); return r.data ? r.data.signedUrl : null; }
+
+  async function card(r) {
+    var board = await signed('ludo-reports', r.board_image_path), frame = await signed('ludo-reports', r.video_frame_path);
+    var photos = (r.photo_paths || []).map(function (p) { return sb.storage.from('ludo-avatars').getPublicUrl(p).data.publicUrl; });
+    var ctx = r.context || {};
+    var pics = '';
+    if (board) pics += '<div><div class="muted">Board when reported</div><img src="' + esc(board) + '"></div>';
+    if (frame) pics += '<div><div class="muted">Their camera when reported</div><img src="' + esc(frame) + '"></div>';
+    if (ctx.photoUrl) pics += '<div><div class="muted">Picture reported</div><img src="' + esc(ctx.photoUrl) + '"></div>';
+    if (photos.length) pics += '<div><div class="muted">Their public pictures</div>' + photos.map(function (u) { return '<img src="' + esc(u) + '">'; }).join('') + '</div>';
+    return '<div class="card"><div class="row"><b>' + esc(r.reported_name) + '</b> ' + (r.banned ? '<span class="tag">BANNED</span>' : '') +
+      '<span class="muted">reported by ' + esc(r.reporter_name) + ' · ' + new Date(r.created_at).toLocaleString() + ' · ' + r.total_reports + ' report(s) against them</span></div>' +
+      '<p>' + esc(r.reason || '(no description)') + '</p><div class="pics row">' + pics + '</div>' +
+      '<textarea id="n-' + r.id + '" placeholder="Note (optional)">' + esc(r.moderator_note || '') + '</textarea>' +
+      '<div class="bar"><button class="grey" data-act="dismiss" data-id="' + r.id + '">Dismiss</button><button class="warn" data-act="warn" data-id="' + r.id + '">Warn</button>' +
+      '<button class="ban" data-act="ban" data-id="' + r.id + '">Ban</button><button class="ok" data-act="unban" data-id="' + r.id + '">Unban</button>' +
+      '<button data-act="remove_pictures" data-id="' + r.id + '">Remove all their pictures</button></div></div>';
+  }
+  start();
+</script>
+</body>
+</html>
