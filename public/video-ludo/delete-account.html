@@ -1,52 +1,135 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Video Ludo — Delete Your Account</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roll Adda — Delete your account and data</title>
 <style>
-  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 32px 20px 60px; color: #222; line-height: 1.6; }
-  h1 { font-size: 24px; margin-bottom: 20px; }
-  h2 { font-size: 16px; margin-top: 28px; }
-  p, li { font-size: 15px; }
-  .box { background: #FFF3E0; border: 1px solid #FFD9B0; border-radius: 10px; padding: 18px 20px; margin: 20px 0; }
-  .steps { background: #F5F5F5; border-radius: 10px; padding: 4px 20px; }
-  a { color: #E74C3C; }
+  :root { --ink:#1f1b2e; --soft:#5b5569; --line:#e6e2f0; --accent:#E8860A; --bg:#FFF9F0; }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  .wrap { max-width:720px; margin:0 auto; padding:40px 20px 72px; }
+  header { border-bottom:3px solid var(--accent); padding-bottom:18px; margin-bottom:28px; }
+  h1 { font-size:27px; margin:0 0 6px; line-height:1.25; }
+  .who { font-size:15px; color:var(--soft); }
+  .who b { color:var(--ink); }
+  h2 { font-size:19px; margin:34px 0 10px; }
+  p, li { color:var(--soft); }
+  li { margin-bottom:5px; }
+  .card {
+    background:#fff; border:1px solid var(--line); border-radius:14px;
+    padding:18px 20px; margin:18px 0;
+  }
+  .card h3 { margin:0 0 8px; font-size:16px; color:var(--ink); }
+  a { color:#9a5a00; }
+  code { background:#f3eee6; padding:1px 6px; border-radius:5px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:15px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--ink); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  td { color:var(--soft); }
+  footer { margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; color:var(--soft); }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<h1>Delete your Video Ludo account</h1>
+  <header>
+    <h1>Delete your Roll Adda account and data</h1>
+    <!-- These three lines are what Google checks: the page must name the app
+         and the developer exactly as they appear on the Play listing. -->
+    <p class="who">
+      App: <b>Roll Adda: Video Board Games</b><br>
+      Package: <code>com.videoludo.game</code><br>
+      Developer: <b>GreatFace</b>
+    </p>
+  </header>
 
-<p>You can request permanent deletion of your Video Ludo account and all data associated with it at any time.</p>
+  <p>
+    You can delete your Roll Adda account at any time, and everything held
+    about you goes with it. There are two ways to ask.
+  </p>
 
-<div class="box">
-  <strong>To request deletion</strong>, email
-  <a href="mailto:lakshaykumaar@gmail.com?subject=Delete my Video Ludo account">lakshaykumaar@gmail.com</a>
-  from the email address linked to your account (if you signed in with Google), or include your in-app username if you played as a guest.
+  <div class="card">
+    <h3>In the app</h3>
+    <p style="margin:0">
+      Open <b>Profile</b>, scroll to the bottom and choose <b>Delete my
+      account</b>. You will be asked to confirm. The account and its data are
+      removed straight away, and you are signed out.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>By email</h3>
+    <p style="margin:0">
+      Write to <a href="mailto:lakshaykumaar@gmail.com">lakshaykumaar@gmail.com</a> from the email
+      address you signed in with, with the subject <b>Delete my Roll Adda
+      account</b>. Tell us your in-game username. We reply within 7 days and
+      complete the deletion within 30 days of your request.
+    </p>
+  </div>
+
+  <h2>What is deleted</h2>
+  <p>All of the following is erased permanently and cannot be recovered:</p>
+  <ul>
+    <li>Your profile: username, avatar, date of birth, and sign-in details</li>
+    <li>Your wallet: gold coins, gold bars, and the record of how they moved</li>
+    <li>Every photograph you uploaded, both the profile picture and the album</li>
+    <li>Your friends, friend requests, and anyone you blocked</li>
+    <li>Your posts and comments in the forum</li>
+    <li>Your game history, results, and statistics</li>
+    <li>Notification tokens, so your phone stops receiving anything from us</li>
+    <li>Records of voice and video sessions you took part in</li>
+  </ul>
+
+  <h2>What is kept, and for how long</h2>
+  <table>
+    <tr><th>What</th><th>Why</th><th>How long</th></tr>
+    <tr>
+      <td>Purchase records (amount, product, date)</td>
+      <td>Tax and accounting law requires us to keep records of money received</td>
+      <td>As long as the law requires, normally 7 years</td>
+    </tr>
+    <tr>
+      <td>Reports made about other players</td>
+      <td>Kept so moderation decisions about other people remain reviewable; your
+          name is removed from them</td>
+      <td>2 years</td>
+    </tr>
+    <tr>
+      <td>Anonymous counts, such as games played per day</td>
+      <td>Contains nothing that identifies you</td>
+      <td>Indefinitely</td>
+    </tr>
+  </table>
+  <p>
+    Nothing kept can be used to contact you or to identify you, apart from the
+    purchase records, which the law obliges us to hold.
+  </p>
+
+  <h2>Things worth knowing before you delete</h2>
+  <ul>
+    <li>Gold coins and gold bars are cancelled and are not refundable.</li>
+    <li>Deletion cannot be undone. Signing up again creates a new, empty account.</li>
+    <li>Your username is released and someone else may take it.</li>
+    <li>If you are in the middle of a game, you leave it and forfeit the buy-in.</li>
+  </ul>
+
+  <h2>Video and voice</h2>
+  <p>
+    Roll Adda does not record video or voice. Calls pass between players live
+    and are never stored, so there are no recordings to delete. What is kept is
+    the fact that a session happened and how long it lasted, used to charge gold
+    bars — and that is deleted with your account.
+  </p>
+
+  <footer>
+    Questions about this page or about your data: <a href="mailto:lakshaykumaar@gmail.com">lakshaykumaar@gmail.com</a>.<br>
+    Last updated: 15 October 2026.
+  </footer>
+
 </div>
-
-<h2>What gets deleted</h2>
-<ul>
-  <li>Your profile — username, avatar, date of birth</li>
-  <li>Your wallet — coin and gold bar balance, transaction history</li>
-  <li>Your friends list and any pending friend requests</li>
-  <li>Your game history and statistics</li>
-  <li>Any reports you filed or were named in</li>
-</ul>
-
-<h2>What we keep, and why</h2>
-<p>We may retain minimal records of purchases already made, and of moderation actions such as bans, for as long as required for accounting, fraud prevention, or legal compliance. This data is kept separately from your identifiable profile once the account is deleted.</p>
-
-<h2>How long it takes</h2>
-<p>Deletion requests are processed manually and completed within 30 days. You'll receive a confirmation email once it's done.</p>
-
-<h2>Guest accounts</h2>
-<p>If you played as a guest and never signed in with Google, your account exists only on your device. Uninstalling the app removes it — there is nothing further to request.</p>
-
-<p style="margin-top:32px;color:#888;font-size:13px;">
-See also our <a href="privacy.html">Privacy Policy</a>.
-</p>
-
 </body>
 </html>
